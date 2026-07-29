@@ -1,39 +1,43 @@
-import sys
 import os
+from dotenv import load_dotenv
 
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.insert(0, project_root)
 
-from sql_reflection_agent.db import get_schema
 from sql_reflection_agent.graph import build_graph
 from sql_reflection_agent.state import SQLAgentState
+from sql_reflection_agent.db import get_schema
+from sql_reflection_agent.utils import save_and_print_log
 
 
 def main():
+    load_dotenv()
+
     app = build_graph()
 
-    schema = get_schema()
+    db_schema = get_schema()
+
+    user_question = "How many cliants in the DB?"
+
 
     initial_state: SQLAgentState = {
-        "question": "Сколько всего клиентов в базе?",
+        "question": user_question,
+        "schema": db_schema,
+        "attempt_count": 0,
         "sql_query": "",
-        "schema": schema,
+        "critic_feedback": "",
+        "is_approved": False,
         "is_valid": False,
-        "execution_result": ""
+        "execution_result": "",
+        "final_answer": "",
+        "history": [] 
     }
 
-    print(f"🚀 Запускаем агента. Вопрос: '{initial_state['question']}'")
-
-    result = app.invoke(initial_state)
-
-    print("\n" + "="*50)
-    print("🎯 РЕЗУЛЬТАТ РАБОТЫ АГЕНТА:")
-    print("="*50)
-    print(f"Сгенерированный SQL:\n{result.get('sql_query')}")
+    print("🤖 Booting the SQL-Agent... (it may take a few seconds)")
     print("-" * 50)
-    print(f"Выполнилось без ошибок?: {result.get('is_valid')}")
-    print(f"Ответ из БД:\n{result.get('execution_result')}")
-    print("="*50)
+
+    final_state = app.invoke(initial_state)
+
+    save_and_print_log(final_state)
+
 
 if __name__ == "__main__":
     main()

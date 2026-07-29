@@ -1,7 +1,8 @@
 import sqlite3
 
-DB_PATH = "data/agent_test.db"
 
+DB_DIR = "data"
+DB_PATH = f"{DB_DIR}/agent_test.db"
 
 def execute_sql(query: str) -> tuple[bool, str]:
     conn = sqlite3.connect(DB_PATH)
@@ -25,3 +26,4 @@ def get_schema() -> str:
         return "\n\n".join(row[0] for row in rows)
     finally:
         conn.close()
+

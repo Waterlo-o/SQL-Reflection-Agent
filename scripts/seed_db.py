@@ -4,8 +4,7 @@ import random
 from datetime import datetime, timedelta
 from faker import Faker
 
-DB_DIR = "data"
-DB_PATH = f"{DB_DIR}/agent_test.db"
+from sql_reflection_agent.db import DB_PATH, DB_DIR
 
 fake = Faker()
 Faker.seed(42)
