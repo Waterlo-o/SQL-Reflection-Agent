@@ -1,17 +1,15 @@
 import sys
 import os
 
-# --- МАГИЯ ПУТЕЙ ---
-# Получаем путь к папке src/ и добавляем его в систему, чтобы Питон видел sql_reflection_agent
+
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(current_dir)
 sys.path.append(os.path.join(project_root, "src"))
-# -------------------
+
 
 import streamlit as st
 from dotenv import load_dotenv
 
-# Теперь эти импорты сработают идеально, откуда бы ты ни запустил скрипт!
 from sql_reflection_agent.graph import build_graph
 from sql_reflection_agent.state import SQLAgentState
 
@@ -40,7 +38,6 @@ user_question = st.text_input("Ваш вопрос к базе данных:", p
 
 if st.button("Спросить"):
     if user_question:
-        # Показываем красивую крутилку загрузки
         with st.spinner("Агент думает, пишет SQL и проверяет его..."):
             
             initial_state: SQLAgentState = {
@@ -64,7 +61,6 @@ if st.button("Спросить"):
         st.markdown("### 🎯 Ответ:")
         st.write(final_state["final_answer"])
         
-        # МАГИЯ: Выводим историю размышлений под спойлером
         with st.expander("Посмотреть ход мыслей агента 🧠"):
             history = final_state.get("history", [])
             for step in history:
