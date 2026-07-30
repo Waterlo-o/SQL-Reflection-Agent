@@ -1,11 +1,9 @@
-import os
 from dotenv import load_dotenv
 
-
-from sql_reflection_agent.graph import build_graph
-from sql_reflection_agent.state import SQLAgentState
 from sql_reflection_agent.db import get_schema
+from sql_reflection_agent.graph import build_graph
 from sql_reflection_agent.reporting import save_and_print_log
+from sql_reflection_agent.state import SQLAgentState
 
 
 def main():
@@ -17,7 +15,6 @@ def main():
 
     user_question = "How many cliants in the DB?"
 
-
     initial_state: SQLAgentState = {
         "question": user_question,
         "schema": db_schema,
@@ -28,7 +25,7 @@ def main():
         "is_valid": False,
         "execution_result": "",
         "final_answer": "",
-        "history": [] 
+        "history": [],
     }
 
     print("🤖 Booting the SQL-Agent... (it may take a few seconds)")

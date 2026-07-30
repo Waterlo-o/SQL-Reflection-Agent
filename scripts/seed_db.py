@@ -1,10 +1,11 @@
 import os
-import sqlite3
 import random
+import sqlite3
 from datetime import datetime, timedelta
+
 from faker import Faker
 
-from sql_reflection_agent.db import DB_PATH, DB_DIR
+from sql_reflection_agent.db import DB_DIR, DB_PATH
 
 fake = Faker()
 Faker.seed(42)

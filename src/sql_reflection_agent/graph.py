@@ -2,10 +2,14 @@ from typing import Literal
 
 from langgraph.graph import END, START, StateGraph
 
-from sql_reflection_agent.nodes import execute_sql_node, generate_sql_node, critic_node, formulate_error_node, formulate_answer_node
-
 from sql_reflection_agent.consts import MAX_ATTEMPTS
-
+from sql_reflection_agent.nodes import (
+    critic_node,
+    execute_sql_node,
+    formulate_answer_node,
+    formulate_error_node,
+    generate_sql_node,
+)
 from sql_reflection_agent.state import SQLAgentState
 
 
@@ -27,14 +31,14 @@ def build_graph():
         {
             "formulate": "formulate_answer",
             "retry": "generate",
-            "fail": "formulate_error"
-        }
+            "fail": "formulate_error",
+        },
     )
     workflow.add_edge("formulate_error", END)
     workflow.add_edge("formulate_answer", END)
-        
+
     app = workflow.compile()
-    
+
     return app
 
 

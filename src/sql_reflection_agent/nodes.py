@@ -70,21 +70,18 @@ def generate_sql_node(state: SQLAgentState) -> dict:
 
 def execute_sql_node(state: SQLAgentState) -> dict:
 
-    query = state['sql_query']
+    query = state["sql_query"]
 
     is_success, execution_result = execute_sql(query)
 
-    return {
-        "is_valid": is_success,
-        "execution_result": execution_result
-    }
+    return {"is_valid": is_success, "execution_result": execution_result}
+
 
 def critic_node(state: SQLAgentState) -> dict:
 
     full_instruction = f"{CRITIC_SYSTEM_PROMPT} \n\nSchema:\n{state['schema']}"
 
     full_history = f"user_question: {state['question']}\n\nagent_answer: {state['sql_query']}\n\nsql_answer: {state['execution_result']}\n\nsql_answer_status: {state['is_valid']}"
-                    
 
     response = client.models.generate_content(
         model="gemini-3.1-flash-lite",
@@ -94,12 +91,14 @@ def critic_node(state: SQLAgentState) -> dict:
             max_output_tokens=1500,
             response_mime_type="application/json",
             response_schema=CriticVerdict,
-        ),    
+        ),
     )
 
     if not response.text:
-        logger.error('No text in critic answer')
-        return {"critic_feedback" : 'Something went wrong, gemini could not answer your question.'}
+        logger.error("No text in critic answer")
+        return {
+            "critic_feedback": "Something went wrong, gemini could not answer your question."
+        }
 
     critic_answer = json.loads(response.text)
 
@@ -110,21 +109,22 @@ def critic_node(state: SQLAgentState) -> dict:
         "is_valid": state["is_valid"],
         "critic_reasoning": critic_answer.get("reasoning", ""),
         "critic_feedback": critic_answer.get("feedback", ""),
-        "is_approved": critic_answer.get("is_approved", False)
+        "is_approved": critic_answer.get("is_approved", False),
     }
 
-    print(critic_answer['reasoning'])
+    print(critic_answer["reasoning"])
 
     return {
-        "is_approved": critic_answer["is_approved"], 
+        "is_approved": critic_answer["is_approved"],
         "critic_feedback": critic_answer["feedback"],
-        "history": [current_step_log] 
+        "history": [current_step_log],
     }
 
 
 def formulate_error_node(state: SQLAgentState) -> dict:
     message = f"Could not generate a valid query after {MAX_ATTEMPTS} attempts. Latest critic feedback: {state['critic_feedback']}"
     return {"final_answer": message}
+
 
 def formulate_answer_node(state: SQLAgentState) -> dict:
 
@@ -136,14 +136,14 @@ def formulate_answer_node(state: SQLAgentState) -> dict:
         f"critic_feedback: {state['critic_feedback']}"
     )
     system_prompt = FORMULATE_ANSWER_SYSTEM_PROMPT
-        
+
     response = client.models.generate_content(
-            model="gemini-3.1-flash-lite",
-            contents=full_history,
-            config=types.GenerateContentConfig(
-                system_instruction=system_prompt,
-                max_output_tokens=1500,
-            ),
+        model="gemini-3.1-flash-lite",
+        contents=full_history,
+        config=types.GenerateContentConfig(
+            system_instruction=system_prompt,
+            max_output_tokens=1500,
+        ),
     )
 
     return {"final_answer": response.text}

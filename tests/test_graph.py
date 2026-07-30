@@ -1,8 +1,8 @@
+from typing import cast
+
 from sql_reflection_agent.graph import route_after_critic
 from sql_reflection_agent.state import SQLAgentState
 
-
-from typing import cast
 
 def make_state(**overrides) -> SQLAgentState:
     base_state: SQLAgentState = {
@@ -15,7 +15,7 @@ def make_state(**overrides) -> SQLAgentState:
         "critic_feedback": "",
         "is_approved": False,
         "final_answer": "",
-        "history":[]
+        "history": [],
     }
     return cast(SQLAgentState, {**base_state, **overrides})
 

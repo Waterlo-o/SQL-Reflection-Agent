@@ -1,6 +1,8 @@
-from pydantic import BaseModel
-from typing import TypedDict, Annotated
 import operator
+from typing import Annotated, TypedDict
+
+from pydantic import BaseModel
+
 
 class SQLAgentState(TypedDict):
     question: str
@@ -13,6 +15,7 @@ class SQLAgentState(TypedDict):
     is_approved: bool
     final_answer: str
     history: Annotated[list, operator.add]
+
 
 class CriticVerdict(BaseModel):
     reasoning: str
