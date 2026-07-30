@@ -27,3 +27,23 @@ def get_schema() -> str:
     finally:
         conn.close()
 
+def get_table_data(table_name: str, limit: int = 50) -> dict:
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?;", [table_name])
+        if not cursor.fetchone():
+            return {"error": f"Table '{table_name}' hasn't been found."}
+        cursor.execute(f"SELECT * FROM {table_name} LIMIT ?", [limit,])
+        rows =  cursor.fetchall()
+
+        columns = [decs[0] for decs in cursor.description]
+
+        return {"columns": columns, "rows": rows}
+        
+    except Exception as e:
+        return {"error": str(e)}
+    finally:
+        conn.close()
+
