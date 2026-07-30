@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from sql_reflection_agent.graph import build_graph
 from sql_reflection_agent.state import SQLAgentState
 from sql_reflection_agent.db import get_schema
-from sql_reflection_agent.utils import save_and_print_log
+from sql_reflection_agent.reporting import save_and_print_log
 
 
 def main():
