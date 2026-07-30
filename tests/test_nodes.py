@@ -38,8 +38,8 @@ def test_generate_sql_node_cleans_query_and_increments(mock_get_client):
     assert result["sql_query"] == "SELECT * FROM clients;"
 
 
-@patch("sql_reflection_agent.nodes.client")
-def test_critic_node(mock_client):
+@patch("sql_reflection_agent.nodes.get_client")
+def test_critic_node(mock_get_client):
 
     fake_response = MagicMock()
 
@@ -51,7 +51,7 @@ def test_critic_node(mock_client):
         }
     )
 
-    mock_client.models.generate_content.return_value = fake_response
+    mock_get_client.return_value.models.generate_content.return_value = fake_response
 
     initial_state: SQLAgentState = {
         "question": "How much users?",
@@ -111,12 +111,12 @@ def test_formulate_error_node():
     assert "Could not generate a valid query" in result["final_answer"]
 
 
-@patch("sql_reflection_agent.nodes.client")
-def test_formulate_answer_node(mock_client):
+@patch("sql_reflection_agent.nodes.get_client")
+def test_formulate_answer_node(mock_get_client):
 
     fake_response = MagicMock()
     fake_response.text = "19 clients in total were find."
-    mock_client.models.generate_content.return_value = fake_response
+    mock_get_client.return_value.models.generate_content.return_value = fake_response
 
     initial_state: SQLAgentState = {
         "question": "How nuch clients is there in total?",
