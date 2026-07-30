@@ -51,7 +51,7 @@ def get_table_data(table_name: str, limit: int = 50) -> dict:
 
         return {"columns": columns, "rows": rows}
 
-    except Exception as e:
+    except sqlite3.Error as e:
         return {"error": str(e)}
     finally:
         conn.close()

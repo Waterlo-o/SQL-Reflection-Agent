@@ -1,11 +1,11 @@
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def save_and_print_log(state: dict, log_dir: str = "run_logs"):
     os.makedirs(log_dir, exist_ok=True)
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     filepath = os.path.join(log_dir, f"log_{timestamp}.md")
 
     md_lines = []
