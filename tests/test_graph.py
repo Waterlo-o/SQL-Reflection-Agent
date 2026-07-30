@@ -15,6 +15,7 @@ def make_state(**overrides) -> SQLAgentState:
         "critic_feedback": "",
         "is_approved": False,
         "final_answer": "",
+        "history":[]
     }
     return cast(SQLAgentState, {**base_state, **overrides})
 

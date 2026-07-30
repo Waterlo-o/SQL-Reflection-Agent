@@ -28,7 +28,8 @@ def test_generate_sql_node_cleans_query_and_increments(mock_client):
         "is_approved": False,
         "is_valid": False,
         "execution_result": "",
-        "final_answer": ""
+        "final_answer": "",
+        "history": []
     }
 
     result = generate_sql_node(state=initial_state)
@@ -59,7 +60,8 @@ def test_critic_node(mock_client):
             "is_approved": False,
             "is_valid": False,
             "execution_result": "",
-            "final_answer": ""
+            "final_answer": "",
+            "history": []
         }
 
     result = critic_node(initial_state)
@@ -70,7 +72,7 @@ def test_critic_node(mock_client):
 @patch('sql_reflection_agent.nodes.execute_sql')
 def test_execute_sql_node_success(mock_execute_sql):
 
-    mock_execute_sql.return_value = {True, "[(19,)]"}
+    mock_execute_sql.return_value = (True, "[(19,)]")
 
     initial_state = {"sql_query": "SELECT COUNT(*) FROM clients;"}
 
@@ -122,7 +124,10 @@ def test_formulate_answer_node(mock_client):
         "execution_result": "[(19,)]",
         "is_valid": True,
         "critic_feedback": "Great answer",
-        "schema": "", "attempt_count": 1, "is_approved": True, "final_answer": ""
+        "schema": "", "attempt_count": 1, 
+        "is_approved": True,
+        "final_answer": "",
+        "history":[]
     }
 
     result = formulate_answer_node(cast(SQLAgentState, initial_state))
