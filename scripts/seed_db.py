@@ -1,7 +1,7 @@
 import os
 import random
 import sqlite3
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from faker import Faker
 
@@ -65,7 +65,7 @@ def generate_clients(cursor):
 
     def get_signup_date():
         days_ago = random.randint(180, 240)
-        return (datetime.now(timezone.utc) - timedelta(days=days_ago)).strftime("%Y-%m-%d %H:%M:%S")
+        return (datetime.now(UTC) - timedelta(days=days_ago)).strftime("%Y-%m-%d %H:%M:%S")
 
     cursor.execute(
         "INSERT INTO clients (name, email, country, signup_date) VALUES (?, ?, ?, ?)",
@@ -126,7 +126,7 @@ def generate_orders(cursor, trap_clients):
     for i in range(total_orders):
         client_id = random.choice(all_client_ids)
 
-        today = datetime.now(timezone.utc)
+        today = datetime.now(UTC)
         random_days_ago = timedelta(days=random.randint(0, 120))
         date_str = (today - random_days_ago).strftime("%Y-%m-%d %H:%M:%S")
 
