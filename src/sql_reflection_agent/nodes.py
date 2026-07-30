@@ -18,7 +18,13 @@ from sql_reflection_agent.state import CriticVerdict, SQLAgentState
 load_dotenv()
 
 API_KEY = os.getenv("GEMINI_API_KEY")
-client = genai.Client(api_key=API_KEY)
+_client = None
+
+def get_client():
+    global _client
+    if _client is None:
+        _client = genai.Client(api_key=API_KEY)
+    return _client
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +43,7 @@ def generate_sql_node(state: SQLAgentState) -> dict:
             f"Write a corrected query that addresses this feedback."
         )
 
-    response = client.models.generate_content(
+    response = get_client().models.generate_content(
         model="gemini-3.1-flash-lite",
         contents=contents,
         config=types.GenerateContentConfig(
@@ -83,7 +89,7 @@ def critic_node(state: SQLAgentState) -> dict:
 
     full_history = f"user_question: {state['question']}\n\nagent_answer: {state['sql_query']}\n\nsql_answer: {state['execution_result']}\n\nsql_answer_status: {state['is_valid']}"
 
-    response = client.models.generate_content(
+    response = get_client().models.generate_content(
         model="gemini-3.1-flash-lite",
         contents=full_history,
         config=types.GenerateContentConfig(
@@ -137,7 +143,7 @@ def formulate_answer_node(state: SQLAgentState) -> dict:
     )
     system_prompt = FORMULATE_ANSWER_SYSTEM_PROMPT
 
-    response = client.models.generate_content(
+    response = get_client().models.generate_content(
         model="gemini-3.1-flash-lite",
         contents=full_history,
         config=types.GenerateContentConfig(

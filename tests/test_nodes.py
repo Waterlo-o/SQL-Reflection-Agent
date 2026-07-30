@@ -12,12 +12,12 @@ from sql_reflection_agent.nodes import (
 )
 
 
-@patch("sql_reflection_agent.nodes.client")
-def test_generate_sql_node_cleans_query_and_increments(mock_client):
+@patch("sql_reflection_agent.nodes.get_client")
+def test_generate_sql_node_cleans_query_and_increments(mock_get_client):
     fake_response = MagicMock()
     fake_response.text = "```sql\nSELECT * FROM clients;\n```"
     fake_response.usage_metadata = None
-    mock_client.models.generate_content.return_value = fake_response
+    mock_get_client.return_value.models.generate_content.return_value = fake_response
 
     initial_state: SQLAgentState = {
         "question": "How much users?",
