@@ -135,7 +135,7 @@ Raw rows from one of the seeded tables, including the deliberately near-duplicat
 
 A generated `run_logs/*.md` file — the full attempt-by-attempt audit trail (SQL, DB result, critic reasoning, critic feedback) for one session, independent of the UI.
 
-### 6. Docker + CI
+### 6. Docker
 ![Docker and CI](docs/screenshots/docker.png)
 
 `docker-compose up` running the containerized API — the project builds and deploys as a self-contained service, not just a local script.
