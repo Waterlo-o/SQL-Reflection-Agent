@@ -1,6 +1,7 @@
 import json
 from typing import cast
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, AsyncMock
+import pytest
 
 from sql_reflection_agent.nodes import (
     SQLAgentState,
@@ -11,13 +12,13 @@ from sql_reflection_agent.nodes import (
     generate_sql_node,
 )
 
-
 @patch("sql_reflection_agent.nodes.get_client")
-def test_generate_sql_node_cleans_query_and_increments(mock_get_client):
+@pytest.mark.asyncio
+async def test_generate_sql_node_cleans_query_and_increments(mock_get_client):
     fake_response = MagicMock()
     fake_response.text = "```sql\nSELECT * FROM clients;\n```"
     fake_response.usage_metadata = None
-    mock_get_client.return_value.models.generate_content.return_value = fake_response
+    mock_get_client.return_value.aio.models.generate_content = AsyncMock(return_value=fake_response)
 
     initial_state: SQLAgentState = {
         "question": "How much users?",
@@ -32,14 +33,15 @@ def test_generate_sql_node_cleans_query_and_increments(mock_get_client):
         "history": [],
     }
 
-    result = generate_sql_node(state=initial_state)
+    result = await generate_sql_node(state=initial_state)
 
     assert result["attempt_count"] == 1
     assert result["sql_query"] == "SELECT * FROM clients;"
 
 
 @patch("sql_reflection_agent.nodes.get_client")
-def test_critic_node(mock_get_client):
+@pytest.mark.asyncio
+async def test_critic_node(mock_get_client):
 
     fake_response = MagicMock()
 
@@ -51,7 +53,7 @@ def test_critic_node(mock_get_client):
         }
     )
 
-    mock_get_client.return_value.models.generate_content.return_value = fake_response
+    mock_get_client.return_value.aio.models.generate_content = AsyncMock(return_value=fake_response)
 
     initial_state: SQLAgentState = {
         "question": "How much users?",
@@ -66,7 +68,7 @@ def test_critic_node(mock_get_client):
         "history": [],
     }
 
-    result = critic_node(initial_state)
+    result = await critic_node(initial_state)
 
     assert result["is_approved"] is True
     assert result["critic_feedback"] == "Whatever feedback it is"
@@ -112,12 +114,18 @@ def test_formulate_error_node():
 
 
 @patch("sql_reflection_agent.nodes.get_client")
-def test_formulate_answer_node(mock_get_client):
+@patch("sql_reflection_agent.nodes.get_stream_writer")
+@pytest.mark.asyncio
+async def test_formulate_answer_node(mock_get_stream_writer, mock_get_client):
 
-    fake_response = MagicMock()
-    fake_response.text = "19 clients in total were find."
-    mock_get_client.return_value.models.generate_content.return_value = fake_response
+    mock_get_stream_writer.return_value = MagicMock()
 
+    async def fake_stream():
+        for text_piece in ["19 ", "clients ", "in total."]:
+            chunk = MagicMock()
+            chunk.text = text_piece
+            yield chunk
+    mock_get_client.return_value.aio.models.generate_content_stream = AsyncMock(return_value=fake_stream())
     initial_state: SQLAgentState = {
         "question": "How nuch clients is there in total?",
         "sql_query": "SELECT COUNT(*) FROM clients;",
@@ -131,6 +139,6 @@ def test_formulate_answer_node(mock_get_client):
         "history": [],
     }
 
-    result = formulate_answer_node(cast(SQLAgentState, initial_state))
+    result = await formulate_answer_node(cast(SQLAgentState, initial_state))
 
-    assert result["final_answer"] == "19 clients in total were find."
+    assert result["final_answer"] == "19 clients in total."
