@@ -1,14 +1,12 @@
+import json
 import os
 import sys
-import json
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
-from fastapi import Request
-from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import cast
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(current_dir)

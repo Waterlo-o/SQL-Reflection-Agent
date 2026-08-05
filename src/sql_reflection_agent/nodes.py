@@ -5,6 +5,7 @@ import os
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+from langgraph.config import get_stream_writer
 
 from sql_reflection_agent.consts import MAX_ATTEMPTS
 from sql_reflection_agent.db import execute_sql
@@ -14,8 +15,6 @@ from sql_reflection_agent.prompts import (
     FORMULATE_ANSWER_SYSTEM_PROMPT,
 )
 from sql_reflection_agent.state import CriticVerdict, SQLAgentState
-
-from langgraph.config import get_stream_writer
 
 load_dotenv()
 

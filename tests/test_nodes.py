@@ -1,6 +1,7 @@
 import json
 from typing import cast
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 
 from sql_reflection_agent.nodes import (
@@ -11,6 +12,7 @@ from sql_reflection_agent.nodes import (
     formulate_error_node,
     generate_sql_node,
 )
+
 
 @patch("sql_reflection_agent.nodes.get_client")
 @pytest.mark.asyncio
