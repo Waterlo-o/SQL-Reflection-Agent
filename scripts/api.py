@@ -1,10 +1,14 @@
 import os
 import sys
+import json
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
+from fastapi import Request
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import cast
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(current_dir)
@@ -53,8 +57,8 @@ def api_get_schema():
     return {"schema": get_schema()}
 
 
-@app.post("/api/chat", response_model=ChatResponse)
-def chat_with_agent(request: ChatRequest):
+@app.post("/api/chat")
+async def chat_with_agent(request: ChatRequest):
 
     initial_state: SQLAgentState = {
         "question": request.question,
@@ -69,13 +73,29 @@ def chat_with_agent(request: ChatRequest):
         "history": [],
     }
 
-    final_state = agent_app.invoke(initial_state)
+    async def event_generator():
+        final_state = None
 
-    save_and_print_log(final_state)
+        async for event_type, event_data in agent_app.astream(
+            initial_state,
+            stream_mode = ["custom","values"]
+        ):
+            if event_type == "custom":
+                if isinstance(event_data, str):
+                    chunk_data = json.dumps({"text": event_data})
+                    yield f"event: message\ndata: {chunk_data}\n\n"
+            elif event_type == "values":
+                final_state = event_data
+        if final_state and isinstance(final_state, dict):
+            save_and_print_log(final_state)
+            answer_text = final_state.get("final_answer", "")
+            final_payload = {
+                "final_answer": answer_text,
+                "history": final_state.get("history", []),
+            }
 
-    return ChatResponse(
-        answer=final_state["final_answer"], history=final_state["history"]
-    )
+            yield f"event: complete\ndata: {json.dumps(final_payload)}\n\n"
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 @app.get("/api/data/{table_name}", response_model=TableDataResponse)
