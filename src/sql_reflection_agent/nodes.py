@@ -15,6 +15,8 @@ from sql_reflection_agent.prompts import (
 )
 from sql_reflection_agent.state import CriticVerdict, SQLAgentState
 
+from langgraph.config import get_stream_writer
+
 load_dotenv()
 
 API_KEY = os.getenv("GEMINI_API_KEY")
@@ -29,7 +31,7 @@ def get_client():
 logger = logging.getLogger(__name__)
 
 
-def generate_sql_node(state: SQLAgentState) -> dict:
+async def generate_sql_node(state: SQLAgentState) -> dict:
 
     full_instruction = f"{EXECUTOR_SYSTEM_PROMPT}\n\nSchema:\n{state['schema']}"
 
@@ -43,7 +45,7 @@ def generate_sql_node(state: SQLAgentState) -> dict:
             f"Write a corrected query that addresses this feedback."
         )
 
-    response = get_client().models.generate_content(
+    response = await get_client().aio.models.generate_content(
         model="gemini-3.1-flash-lite",
         contents=contents,
         config=types.GenerateContentConfig(
@@ -83,13 +85,13 @@ def execute_sql_node(state: SQLAgentState) -> dict:
     return {"is_valid": is_success, "execution_result": execution_result}
 
 
-def critic_node(state: SQLAgentState) -> dict:
+async def critic_node(state: SQLAgentState) -> dict:
 
     full_instruction = f"{CRITIC_SYSTEM_PROMPT} \n\nSchema:\n{state['schema']}"
 
     full_history = f"user_question: {state['question']}\n\nagent_answer: {state['sql_query']}\n\nsql_answer: {state['execution_result']}\n\nsql_answer_status: {state['is_valid']}"
 
-    response = get_client().models.generate_content(
+    response = await get_client().aio.models.generate_content(
         model="gemini-3.1-flash-lite",
         contents=full_history,
         config=types.GenerateContentConfig(
@@ -132,7 +134,10 @@ def formulate_error_node(state: SQLAgentState) -> dict:
     return {"final_answer": message}
 
 
-def formulate_answer_node(state: SQLAgentState) -> dict:
+async def formulate_answer_node(state: SQLAgentState) -> dict:
+
+    writer = get_stream_writer()
+    full_text=''
 
     full_history = (
         f"user_question: {state['question']}\n\n"
@@ -143,13 +148,16 @@ def formulate_answer_node(state: SQLAgentState) -> dict:
     )
     system_prompt = FORMULATE_ANSWER_SYSTEM_PROMPT
 
-    response = get_client().models.generate_content(
+    async for chunk in await get_client().aio.models.generate_content_stream(
         model="gemini-3.1-flash-lite",
-        contents=full_history,
-        config=types.GenerateContentConfig(
-            system_instruction=system_prompt,
-            max_output_tokens=1500,
-        ),
-    )
+                contents=full_history,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_prompt,
+                    max_output_tokens=1500,
+                ),
+        ):
+            if chunk.text:
+                full_text += chunk.text
+                writer(chunk.text)
 
-    return {"final_answer": response.text}
+    return {"final_answer": full_text}
