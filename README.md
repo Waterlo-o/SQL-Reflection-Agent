@@ -47,12 +47,12 @@ State is shared across the graph via a `TypedDict`; the attempt history uses a L
 - **LangGraph** — graph orchestration, conditional edges, cyclic reflection loop
 - **Gemini API** (`google-genai`) — structured output (Pydantic `response_schema`) for the critic's verdict
 - **FastAPI** — backend API (`/api/chat`, `/api/schema`, `/api/data/{table}`)
+- **Async + SSE streaming** — LangGraph nodes run via the async Gemini client (`client.aio`); the final answer streams token-by-token to the browser over Server-Sent Events using LangGraph's `stream_mode="custom"`, while the reflection loop's intermediate steps (executor/critic retries) are tracked via `stream_mode="values"` in the same call.
 - **SQLite** — seeded test database (clients / orders / order_items) with `Faker`-generated data and hand-placed edge cases
 - **Vanilla HTML/CSS/JS** frontend — no framework, `marked.js` for rendering markdown answers
 - **pytest** + `unittest.mock` — every node fully tested with mocked LLM calls, no real API calls in CI
 - **Docker** — containerized API, DB seeded at build time
 - **GitHub Actions** — `ruff` + `pytest` on every push
-
 ---
 
 ## Project structure
@@ -135,8 +135,8 @@ Raw rows from one of the seeded tables, including the deliberately near-duplicat
 
 A generated `run_logs/*.md` file — the full attempt-by-attempt audit trail (SQL, DB result, critic reasoning, critic feedback) for one session, independent of the UI.
 
-### 6. Docker + CI
-![Docker and CI](docs/screenshots/docker.png)
+### 6. Docker
+![Docker](docs/screenshots/docker.png)
 
 `docker-compose up` running the containerized API — the project builds and deploys as a self-contained service, not just a local script.
 
@@ -144,4 +144,5 @@ A generated `run_logs/*.md` file — the full attempt-by-attempt audit trail (SQ
 
 ## What this deliberately doesn't do (yet)
 
-This is a read-only, single-query-per-question system by design — the executor only ever runs `SELECT` statements, and each question resolves to one SQL query (possibly rewritten across retries), not a multi-step plan. A planner-agent architecture (decomposing complex questions into sub-tasks, with separate read/write-capable executors) was considered and deliberately deferred until this simpler, safer version was fully working end-to-end — extending into that is a natural next step, not an oversight.
+
+This is a read-only, single-query-per-question system by design — the executor only ever runs SELECT statements, and each question resolves to one SQL query (possibly rewritten across retries), not a multi-step plan. A planner-agent architecture (decomposing complex questions into sub-tasks, with separate read/write-capable executors) was considered and deliberately deferred until this simpler, safer version was fully working end-to-end — extending into that is a natural next step, not an oversight.
