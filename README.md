@@ -6,6 +6,8 @@ Given a natural-language question, an **executor** agent generates a SQL query, 
 
 The point of this project isn't SQL generation itself — it's the graph-based reflection pattern: a real conditional loop (executor → critic → executor) driven by LangGraph's conditional edges, not a linear pipeline.
 
+**🔗 Live demo:** [waterlo-o.github.io/SQL-Reflection-Agent](https://waterlo-o.github.io/SQL-Reflection-Agent/) — frontend on GitHub Pages, backend running on a self-managed VPS behind Nginx with a Let's Encrypt SSL certificate.
+
 ---
 
 ## Why this is interesting
@@ -47,12 +49,14 @@ State is shared across the graph via a `TypedDict`; the attempt history uses a L
 - **LangGraph** — graph orchestration, conditional edges, cyclic reflection loop
 - **Gemini API** (`google-genai`) — structured output (Pydantic `response_schema`) for the critic's verdict
 - **FastAPI** — backend API (`/api/chat`, `/api/schema`, `/api/data/{table}`)
-- **Async + SSE streaming** — LangGraph nodes run via the async Gemini client (`client.aio`); the final answer streams token-by-token to the browser over Server-Sent Events using LangGraph's `stream_mode="custom"`, while the reflection loop's intermediate steps (executor/critic retries) are tracked via `stream_mode="values"` in the same call.
+- **Async + SSE streaming** — LLM-calling nodes run via the async Gemini client (`client.aio`); the final answer streams token-by-token to the browser over Server-Sent Events using LangGraph's `stream_mode="custom"`, while `stream_mode="values"` tracks the reflection loop's state (including retries) in the same call
 - **SQLite** — seeded test database (clients / orders / order_items) with `Faker`-generated data and hand-placed edge cases
 - **Vanilla HTML/CSS/JS** frontend — no framework, `marked.js` for rendering markdown answers
 - **pytest** + `unittest.mock` — every node fully tested with mocked LLM calls, no real API calls in CI
 - **Docker** — containerized API, DB seeded at build time
+- **Deployment** — self-managed VPS (Google Cloud `e2-micro`, Always Free tier), Nginx as reverse proxy, HTTPS via Let's Encrypt/Certbot, DuckDNS for the domain; frontend hosted separately on GitHub Pages
 - **GitHub Actions** — `ruff` + `pytest` on every push
+
 ---
 
 ## Project structure
@@ -97,6 +101,8 @@ The database is generated at build time (fixed seed, fully deterministic) and ba
 uv run pytest -v
 ```
 All LLM calls are mocked — no API key needed to run the test suite.
+
+**Production deployment:** the backend runs as the same Docker image above on a VPS, sitting behind Nginx (reverse proxy on ports 80/443, no direct external access to the container's port), with a Let's Encrypt certificate obtained via Certbot and a DuckDNS domain pointing at the server's IP. The frontend is a static file, deployed separately via GitHub Pages — no server-side rendering needed for it.
 
 ---
 
@@ -144,5 +150,6 @@ A generated `run_logs/*.md` file — the full attempt-by-attempt audit trail (SQ
 
 ## What this deliberately doesn't do (yet)
 
+This is a read-only, single-query-per-question system by design — the executor only ever runs `SELECT` statements, and each question resolves to one SQL query (possibly rewritten across retries), not a multi-step plan. A planner-agent architecture (decomposing complex questions into sub-tasks, with separate read/write-capable executors) was considered and deliberately deferred until this simpler, safer version was fully working end-to-end — extending into that is a natural next step, not an oversight.
 
-This is a read-only, single-query-per-question system by design — the executor only ever runs SELECT statements, and each question resolves to one SQL query (possibly rewritten across retries), not a multi-step plan. A planner-agent architecture (decomposing complex questions into sub-tasks, with separate read/write-capable executors) was considered and deliberately deferred until this simpler, safer version was fully working end-to-end — extending into that is a natural next step, not an oversight.
+The graph itself is fully async and streams the final answer token-by-token (see below), so this limitation is about the agent's *planning* capability, not its performance or responsiveness.
