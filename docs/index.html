@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart SQL Agent</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px;}
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(186, 230, 253, 0.8); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(125, 211, 252, 1); }
+        details > summary { list-style: none; }
+        details > summary::-webkit-details-marker { display: none; }
+
+        .bg-animated-sky {
+            background: linear-gradient(-45deg, #e0f2fe, #bae6fd, #7dd3fc, #dbeafe);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .animate-blob { animation: blob 7s infinite; will-change: transform; }
+        .animation-delay-2000 { animation-delay: 2s; }
+        .animation-delay-4000 { animation-delay: 4s; }
+        @keyframes blob {
+            0% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+            100% { transform: translate(0px, 0px) scale(1); }
+        }
+
+        .float-anim { animation: float 3s ease-in-out infinite; will-change: transform; }
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-6px); }
+            100% { transform: translateY(0px); }
+        }
+
+        .message-enter {
+            animation: slideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            opacity: 0; transform: translateY(20px);
+        }
+        @keyframes slideIn { to { opacity: 1; transform: translateY(0); } }
+
+        .thinking-dot {
+            width: 7px; height: 7px; border-radius: 999px;
+            background: currentColor;
+            animation: thinkingPulse 1.3s ease-in-out infinite;
+        }
+        .thinking-dot:nth-child(2) { animation-delay: 0.15s; }
+        .thinking-dot:nth-child(3) { animation-delay: 0.3s; }
+        @keyframes thinkingPulse {
+            0%, 60%, 100% { opacity: 0.25; transform: scale(0.85); }
+            30% { opacity: 1; transform: scale(1); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .bg-animated-sky, .animate-blob, .float-anim, .message-enter, .thinking-dot {
+                animation: none !important;
+            }
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.45);
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            transition: all 0.3s ease;
+        }
+        .glass-card:hover {
+            background: rgba(255, 255, 255, 0.9);
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 10px 20px rgba(56, 189, 248, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-animated-sky text-slate-800 h-screen flex overflow-hidden font-sans selection:bg-blue-300 selection:text-blue-900 relative">
+
+    <div class="absolute top-[-10%] left-[-10%] w-96 h-96 bg-blue-300 rounded-full mix-blend-multiply filter blur-[80px] opacity-60 animate-blob pointer-events-none z-0"></div>
+    <div class="absolute top-[20%] right-[-10%] w-96 h-96 bg-sky-200 rounded-full mix-blend-multiply filter blur-[80px] opacity-60 animate-blob animation-delay-2000 pointer-events-none z-0"></div>
+    <div class="absolute bottom-[-20%] left-[20%] w-96 h-96 bg-cyan-200 rounded-full mix-blend-multiply filter blur-[80px] opacity-60 animate-blob animation-delay-4000 pointer-events-none z-0"></div>
+
+    <aside class="w-80 glass-panel flex flex-col z-10 m-4 rounded-3xl overflow-hidden shadow-2xl shadow-sky-900/10">
+        <div class="p-6 border-b border-white/50 bg-white/30">
+            <h2 class="text-xl font-extrabold flex items-center gap-2 text-blue-900">
+                <span class="text-blue-500 text-2xl drop-shadow-md">☁️</span> Database
+            </h2>
+            <p class="text-xs text-blue-700/80 mt-1 font-medium">Auto-detected schema layout</p>
+        </div>
+        <div class="p-4 overflow-y-auto flex-1" id="tables-container">
+            <div class="animate-pulse flex space-x-4 p-4"><div class="flex-1 space-y-4 py-1"><div class="h-4 bg-blue-300/50 rounded w-3/4"></div><div class="space-y-2"><div class="h-3 bg-blue-200/50 rounded"></div><div class="h-3 bg-blue-200/50 rounded w-5/6"></div></div></div></div>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-full relative z-10 p-4 pl-0">
+        <div class="flex-1 glass-panel rounded-3xl flex flex-col overflow-hidden shadow-2xl shadow-sky-900/10">
+            <header class="p-6 border-b border-white/50 bg-white/20 flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-black text-blue-900 tracking-tight drop-shadow-sm flex items-center gap-3">
+                        ✨ Smart SQL Agent
+                    </h1>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button id="clear-chat-btn" class="text-xs font-bold text-blue-600/70 hover:text-blue-600 bg-white/40 hover:bg-white/80 px-3 py-1.5 rounded-full transition-all border border-white">
+                        🗑️ Clear Chat
+                    </button>
+                    <div class="flex items-center gap-2 text-emerald-700 font-bold bg-emerald-50/50 px-3 py-1.5 rounded-full text-xs border border-emerald-200/50 backdrop-blur-md">
+                        🛡️ Read-Only Guard
+                    </div>
+                    <div class="flex items-center gap-2 text-blue-800 font-bold bg-white/50 px-4 py-1.5 rounded-full text-xs border border-white shadow-sm backdrop-blur-md">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse"></span>
+                        Connected
+                    </div>
+                </div>
+            </header>
+
+            <div id="chat-box" class="flex-1 p-6 overflow-y-auto flex flex-col gap-6 scroll-smooth">
+            </div>
+
+            <div class="p-6 bg-white/30 border-t border-white/50 flex flex-col gap-3">
+                <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide" id="quick-prompts">
+                </div>
+
+                <form id="chat-form" class="flex gap-3 relative group">
+                    <input type="text" id="user-input" class="flex-1 bg-white/60 backdrop-blur-xl border-2 border-white/60 rounded-2xl px-6 py-4 text-blue-950 focus:outline-none focus:border-blue-400 focus:bg-white/80 transition-all text-base shadow-inner placeholder-blue-400/70 font-medium" placeholder="Ask a question about your data..." required autocomplete="off">
+                    <button type="submit" id="submit-btn" class="bg-gradient-to-r from-blue-500 to-sky-400 hover:from-blue-600 hover:to-sky-500 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-[0_8px_20px_rgba(56,189,248,0.4)] hover:-translate-y-1 flex items-center gap-2 border border-blue-300/50">
+                        <span>Ask</span>
+                        <svg class="w-4 h-4 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <div id="table-modal" class="fixed inset-0 bg-blue-900/30 backdrop-blur-md hidden items-center justify-center z-50 p-6 opacity-0 transition-opacity duration-300">
+        <div class="glass-panel border-white rounded-3xl shadow-2xl shadow-blue-900/30 w-full max-w-6xl h-[80vh] flex flex-col overflow-hidden transform scale-95 transition-transform duration-300" id="modal-content">
+            <div class="p-5 border-b border-white/50 bg-white/40 flex justify-between items-center">
+                <h3 id="modal-title" class="text-xl font-extrabold text-blue-900 flex items-center gap-3">
+                    <span class="bg-white/60 p-2 rounded-xl text-blue-500 shadow-sm border border-white">📊</span> 
+                    <span>Table Data</span>
+                </h3>
+                <div class="flex items-center gap-4">
+                    <button id="export-csv-btn" class="text-xs font-bold text-white bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-xl shadow-md transition-all flex items-center gap-2">
+                        ⬇️ Download CSV
+                    </button>
+                    <button id="close-modal-btn" class="text-blue-500 hover:bg-white/50 w-8 h-8 rounded-full text-xl flex items-center justify-center transition-colors">&times;</button>
+                </div>
+            </div>
+            <div class="p-0 overflow-auto flex-1 bg-white/70 relative">
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead id="table-head" class="bg-white/90 backdrop-blur-xl text-blue-900 sticky top-0 shadow-sm z-10 font-extrabold"></thead>
+                    <tbody id="table-body" class="text-blue-950 font-medium"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <textarea id="copy-textarea" class="hidden"></textarea>
+
+    <script>
+        const API_URL = "https://sql-agent-demo.duckdns.org";
+        
+        const quickPromptPool = [
+            "Show me the top 5 most recent orders",
+            "Count all clients by country",
+            "Which client spent the most money overall?",
+            "Show the total revenue for the last 30 days",
+            "List all clients who haven't placed an order yet",
+            "What is the average order value across all time?",
+            "Find the most popular product by quantity sold",
+            "Show clients who signed up in the last year",
+            "What are the top 3 countries by total sales volume?",
+            "Show me all orders with a 'pending' status"
+        ];
+
+        let currentTableForExport = { name: '', columns: [], rows: [] };
+        let chatHistory = JSON.parse(localStorage.getItem('smartSqlHistory')) || [];
+
+        const chatBox = document.getElementById('chat-box');
+        const tablesContainer = document.getElementById('tables-container');
+        const chatForm = document.getElementById('chat-form');
+        const userInput = document.getElementById('user-input');
+        const submitBtn = document.getElementById('submit-btn');
+        const clearChatBtn = document.getElementById('clear-chat-btn');
+        const quickPromptsContainer = document.getElementById('quick-prompts');
+        
+        const tableModal = document.getElementById('table-modal');
+        const modalContent = document.getElementById('modal-content');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const exportCsvBtn = document.getElementById('export-csv-btn');
+        const tableHead = document.getElementById('table-head');
+        const tableBody = document.getElementById('table-body');
+        const modalTitle = document.getElementById('modal-title');
+
+        function renderRandomPrompts() {
+            quickPromptsContainer.innerHTML = '';
+            const shuffled = [...quickPromptPool].sort(() => 0.5 - Math.random());
+            const selectedPrompts = shuffled.slice(0, 4);
+
+            selectedPrompts.forEach(text => {
+                const btn = document.createElement('button');
+                btn.type = 'button'; 
+                btn.className = 'chip-btn whitespace-nowrap text-xs font-bold text-blue-700 bg-white/60 hover:bg-white px-4 py-2 rounded-full border border-white shadow-sm transition-all hover:-translate-y-0.5';
+                btn.textContent = text;
+                
+                btn.addEventListener('click', () => {
+                    userInput.value = text;
+                    chatForm.requestSubmit();
+                });
+
+                quickPromptsContainer.appendChild(btn);
+            });
+        }
+
+        const MAX_STORED_MESSAGES = 40;
+
+        function saveHistory() {
+            if (chatHistory.length > MAX_STORED_MESSAGES) {
+                chatHistory = chatHistory.slice(chatHistory.length - MAX_STORED_MESSAGES);
+            }
+            localStorage.setItem('smartSqlHistory', JSON.stringify(chatHistory));
+        }
+
+        function renderInitialGreeting() {
+            chatBox.innerHTML = '';
+            if (chatHistory.length === 0) {
+                appendMessageToDOM('agent', `Hello! I'm connected to your database. On the left, you can see all the tables and their relationships. Click on any to view the data, or just ask me a question!`, false, null);
+            } else {
+                chatHistory.forEach(msg => appendMessageToDOM(msg.sender, msg.text, msg.isHtml, msg.metrics));
+            }
+        }
+
+        clearChatBtn.addEventListener('click', () => {
+            if(confirm('Are you sure you want to clear the chat history?')) {
+                chatHistory = [];
+                saveHistory();
+                renderInitialGreeting();
+                renderRandomPrompts();
+            }
+        });
+
+        function appendMessageToDOM(sender, text, isHtml = false, metrics = null) {
+            const wrapper = document.createElement('div');
+            wrapper.className = `flex gap-4 items-start message-enter ${sender === 'user' ? 'flex-row-reverse' : ''}`;
+            
+            const avatar = document.createElement('div');
+            avatar.className = `p-3 rounded-2xl text-xl shadow-lg text-white border border-white/50 ${
+                sender === 'user' 
+                ? 'bg-gradient-to-br from-blue-700 to-blue-900 shadow-blue-900/30' 
+                : 'bg-gradient-to-br from-blue-400 to-sky-400 shadow-blue-400/50 float-anim'
+            }`;
+            avatar.textContent = sender === 'user' ? '👤' : '🤖';
+
+            const contentWrapper = document.createElement('div');
+            contentWrapper.className = `flex flex-col ${sender === 'user' ? 'items-end' : 'items-start'} max-w-3xl`;
+
+            const bubble = document.createElement('div');
+            bubble.className = `p-5 rounded-2xl text-sm leading-relaxed font-medium shadow-sm border ${
+                sender === 'user' 
+                ? 'bg-gradient-to-r from-blue-500 to-sky-400 rounded-tr-none text-white border-blue-400/50' 
+                : 'bg-white/70 backdrop-blur-md rounded-tl-none text-blue-950 border-white agent-content-body'
+            }`;
+            
+            if (isHtml) bubble.innerHTML = text;
+            else bubble.textContent = text;
+
+            contentWrapper.appendChild(bubble);
+
+            if (metrics) {
+                const metricDiv = document.createElement('div');
+                metricDiv.className = "text-[10px] text-blue-600/60 font-bold mt-1 px-1";
+                metricDiv.textContent = `⏱ Executed in ${metrics}ms`;
+                contentWrapper.appendChild(metricDiv);
+            }
+
+            wrapper.appendChild(avatar);
+            wrapper.appendChild(contentWrapper);
+            chatBox.appendChild(wrapper);
+            chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
+        }
+
+        function addMessage(sender, text, isHtml = false, metrics = null) {
+            chatHistory.push({ sender, text, isHtml, metrics });
+            saveHistory();
+            appendMessageToDOM(sender, text, isHtml, metrics);
+        }
+
+        function createStreamingAgentBubble() {
+            const wrapper = document.createElement('div');
+            wrapper.className = `flex gap-4 items-start message-enter`;
+            
+            const avatar = document.createElement('div');
+            avatar.className = `p-3 rounded-2xl text-xl shadow-lg text-white border border-white/50 bg-gradient-to-br from-blue-400 to-sky-400 shadow-blue-400/50 float-anim`;
+            avatar.textContent = '🤖';
+
+            const contentWrapper = document.createElement('div');
+            contentWrapper.className = `flex flex-col items-start max-w-3xl w-full`;
+
+            const bubble = document.createElement('div');
+            bubble.className = `p-5 rounded-2xl text-sm leading-relaxed font-medium shadow-sm border bg-white/70 backdrop-blur-md rounded-tl-none text-blue-950 border-white w-full`;
+            
+            bubble.innerHTML = '<div class="flex items-center gap-1.5 text-blue-500 mb-2"><span class="thinking-dot"></span><span class="thinking-dot"></span><span class="thinking-dot"></span></div>';
+
+            contentWrapper.appendChild(bubble);
+            wrapper.appendChild(avatar);
+            wrapper.appendChild(contentWrapper);
+            
+            chatBox.appendChild(wrapper);
+            chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
+
+            return { contentWrapper, bubble };
+        }
+
+        function parseSchemaToJSON(sqlString) {
+            const tables = [];
+            const tableRegex = /CREATE\s+TABLE\s+(\w+)\s*\(([\s\S]*?)\);?/gi;
+            let match;
+            while ((match = tableRegex.exec(sqlString)) !== null) {
+                const tableName = match[1];
+                if (tableName.toLowerCase() === 'sqlite_sequence') continue;
+                const columns = [];
+                const relations = [];
+                match[2].split(',\n').map(l => l.trim()).filter(l => l).forEach(line => {
+                    if (line.toUpperCase().includes('FOREIGN KEY')) {
+                        const relMatch = line.match(/REFERENCES\s+(\w+)\s*\(/i);
+                        if (relMatch) relations.push(relMatch[1]);
+                    } else {
+                        const parts = line.split(/\s+/);
+                        if (parts.length >= 2 && !line.toUpperCase().startsWith('PRIMARY') && !line.toUpperCase().startsWith('UNIQUE')) {
+                            columns.push({ name: parts[0], type: parts[1] });
+                        }
+                    }
+                });
+                tables.push({ name: tableName, columns, relations });
+            }
+            return tables;
+        }
+
+        function renderTablesSidebar(tables) {
+            tablesContainer.innerHTML = '';
+            if (tables.length === 0) return tablesContainer.innerHTML = '<p class="text-sm text-blue-600 p-4 font-medium">No tables found</p>';
+            tables.forEach(table => {
+                const card = document.createElement('div');
+                card.className = "glass-card rounded-2xl p-4 mb-3 cursor-pointer group";
+                let relHtml = table.relations.length > 0 ? `<div class="mt-3 pt-2 border-t border-blue-200/50 text-[10px] text-blue-600 font-bold flex gap-1 flex-wrap">${table.relations.map(r => `<span class="bg-white/80 px-2 py-1 rounded-md shadow-sm border border-white">🔗 ${r}</span>`).join('')}</div>` : '';
+                card.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="font-bold text-blue-900 text-sm">🗂️ ${table.name}</h3>
+                        <span class="text-[10px] bg-blue-500 text-white px-2 py-1 rounded-full font-bold shadow-sm">${table.columns.length} col</span>
+                    </div>
+                    <div class="text-[11px] text-blue-800/70 truncate font-medium">${table.columns.map(c => c.name).join(', ')}</div>
+                    ${relHtml}
+                `;
+                card.onclick = () => openTableModal(table.name);
+                tablesContainer.appendChild(card);
+            });
+        }
+
+        async function fetchSchema() {
+            try {
+                const res = await fetch(`${API_URL}/api/schema`);
+                const data = await res.json();
+                renderTablesSidebar(parseSchemaToJSON(data.schema));
+            } catch (err) {
+                tablesContainer.innerHTML = `<div class="p-4 text-red-500 text-sm bg-red-100/80 rounded-xl border border-red-200 font-bold">Error connecting to DB.</div>`;
+            }
+        }
+
+        function hideModal() {
+            tableModal.classList.remove('opacity-100');
+            modalContent.classList.remove('scale-100');
+            setTimeout(() => { tableModal.classList.add('hidden'); tableModal.classList.remove('flex'); }, 300);
+        }
+        closeModalBtn.addEventListener('click', hideModal);
+        
+        async function openTableModal(tableName) {
+            try {
+                const res = await fetch(`${API_URL}/api/data/${tableName}`);
+                const data = await res.json();
+                if (data.error) return alert(`Error: ${data.error}`);
+                currentTableForExport = { name: tableName, columns: data.columns, rows: data.rows };
+                modalTitle.innerHTML = `<span class="bg-white/60 p-2 rounded-xl text-blue-500 shadow-sm border border-white">📊</span> Table: <span class="text-blue-700 ml-1 drop-shadow-sm">${tableName}</span>`;
+                tableHead.innerHTML = `<tr>${data.columns.map(col => `<th class="p-4 uppercase tracking-wider text-[11px] border-b border-blue-100/50">${col}</th>`).join('')}</tr>`;
+                tableBody.innerHTML = data.rows.map(row => `<tr class="hover-row border-b border-blue-100/30">${row.map(cell => `<td class="p-4 whitespace-nowrap">${cell !== null ? cell : '<em class="text-blue-400/50">null</em>'}</td>`).join('')}</tr>`).join('');
+                tableModal.classList.remove('hidden'); tableModal.classList.add('flex');
+                setTimeout(() => { tableModal.classList.add('opacity-100'); modalContent.classList.add('scale-100'); }, 10);
+            } catch (err) { alert('Error loading data.'); }
+        }
+
+        exportCsvBtn.addEventListener('click', () => {
+            if (!currentTableForExport.columns.length) return;
+            const csvContent = `${currentTableForExport.columns.join(',')}\n${currentTableForExport.rows.map(row => row.map(cell => `"${cell || ''}"`).join(',')).join('\n')}`;
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }));
+            link.download = `${currentTableForExport.name}_export.csv`;
+            link.click();
+        });
+
+        window.copySql = function(btnElement, base64Sql) {
+            navigator.clipboard.writeText(atob(base64Sql)).then(() => {
+                const originalText = btnElement.innerHTML;
+                btnElement.innerHTML = '✅ Copied!';
+                btnElement.classList.replace('text-blue-500', 'text-green-500');
+                setTimeout(() => { btnElement.innerHTML = originalText; btnElement.classList.replace('text-green-500', 'text-blue-500'); }, 2000);
+            });
+        };
+
+        function formatHistoryToHTML(history) {
+            if (!history || history.length === 0) return '';
+            let html = `<details class="mt-5 bg-white/40 border border-white/60 rounded-2xl group overflow-hidden transition-all shadow-sm backdrop-blur-sm">
+                <summary class="cursor-pointer p-4 font-bold text-blue-700 hover:text-blue-900 hover:bg-white/50 flex items-center justify-between transition-colors outline-none select-none">
+                    <span class="flex items-center gap-2">🧠 View agent's reasoning <span class="bg-blue-500 text-white px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider shadow-sm">${history.length} steps</span></span>
+                    <span class="group-open:rotate-180 transition-transform duration-300">▼</span>
+                </summary>
+                <div class="p-5 border-t border-white/50 flex flex-col gap-4 bg-white/60 backdrop-blur-md">`;
+
+            history.forEach(step => {
+                const successEmoji = step.is_valid ? '✅' : '❌';
+                const queryStr = step.query || step.sql_query || ''; 
+                const b64Sql = btoa(unescape(encodeURIComponent(queryStr)));
+                
+                html += `
+                    <div class="bg-white/80 p-4 rounded-xl border border-white shadow-sm">
+                        <div class="mb-3">
+                            <div class="flex justify-between items-center mb-1">
+                                <strong class="text-blue-800 text-[10px] uppercase tracking-wider block">SQL Query:</strong>
+                                <button onclick="copySql(this, '${b64Sql}')" class="text-[10px] font-bold text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded transition-colors">📋 Copy</button>
+                            </div>
+                            <pre class="bg-blue-950 text-sky-300 p-3 rounded-xl overflow-x-auto text-xs border border-blue-900 font-mono shadow-inner"><code>${queryStr}</code></pre>
+                        </div>
+                        <div class="mb-3">
+                            <strong class="text-blue-800 text-[10px] uppercase tracking-wider block mb-1">DB Response (${successEmoji}):</strong>
+                            <pre class="bg-white text-blue-900 p-3 rounded-xl overflow-x-auto text-xs border border-blue-100 font-mono shadow-inner"><code>${step.db_result || step.execution_result || ''}</code></pre>
+                        </div>
+                        <div class="mt-3 pt-3 border-t border-blue-100">
+                            <strong class="text-blue-900 text-xs">Critic:</strong> 
+                            <span class="text-blue-800/80 text-xs block mt-1 leading-relaxed font-medium">${step.critic_reasoning || step.critic_feedback || ''}</span>
+                        </div>
+                    </div>`;
+            });
+            return html + `</div></details>`;
+        }
+
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const question = userInput.value.trim();
+            if (!question) return;
+
+            addMessage('user', question);
+            userInput.value = '';
+            
+            const originalBtnContent = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="animate-spin text-xl">⏳</span> Thinking...';
+            submitBtn.classList.add('opacity-80', 'cursor-not-allowed');
+
+            const { contentWrapper, bubble } = createStreamingAgentBubble();
+            
+            let displayedText = "";
+            let textBuffer = "";
+            let isBackendDone = false;
+            let finalPayload = null;
+            let typingInterval = null;
+            const startTime = performance.now();
+
+            const processTypingQueue = () => {
+                if (displayedText.length < textBuffer.length) {
+                    const chunkSize = 2; 
+                    displayedText += textBuffer.slice(displayedText.length, displayedText.length + chunkSize);
+                    bubble.innerHTML = `<div class="mb-2 text-base font-bold text-blue-950">${marked.parse(displayedText)}</div>`;
+                    chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
+                } 
+                else if (isBackendDone) {
+                    clearInterval(typingInterval);
+                    
+                    const answerText = finalPayload.final_answer || finalPayload.answer || displayedText;
+                    const answerHtml = answerText 
+                        ? `<div class="mb-2 text-base font-bold text-blue-950">${marked.parse(answerText)}</div>` 
+                        : `<div class="mb-2 text-base font-bold text-red-500">Error: Received empty response.</div>`;
+                        
+                    const historyHtml = formatHistoryToHTML(finalPayload.history || []);
+                    
+                    bubble.innerHTML = answerHtml + historyHtml;
+                    
+                    const timeTaken = Math.round(performance.now() - startTime);
+                    const metricDiv = document.createElement('div');
+                    metricDiv.className = "text-[10px] text-blue-600/60 font-bold mt-1 px-1";
+                    metricDiv.textContent = `⏱ Executed in ${timeTaken}ms`;
+                    contentWrapper.appendChild(metricDiv);
+
+                    chatHistory.push({
+                        sender: 'agent',
+                        text: bubble.innerHTML,
+                        isHtml: true,
+                        metrics: timeTaken
+                    });
+                    saveHistory();
+                    renderRandomPrompts();
+                }
+            };
+
+            typingInterval = setInterval(processTypingQueue, 15);
+
+            try {
+                const response = await fetch(`${API_URL}/api/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: question })
+                });
+
+                if (!response.ok) throw new Error('Network error');
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder("utf-8");
+                let buffer = "";
+
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    let boundary = buffer.indexOf('\n\n');
+                    
+                    while (boundary !== -1) {
+                        const chunk = buffer.slice(0, boundary);
+                        buffer = buffer.slice(boundary + 2);
+
+                        let eventType = "message";
+                        let dataStr = "";
+
+                        chunk.split('\n').forEach(line => {
+                            if (line.startsWith('event:')) eventType = line.substring(6).trim();
+                            else if (line.startsWith('data:')) dataStr = line.substring(5).trim();
+                        });
+
+                        if (dataStr) {
+                            const data = JSON.parse(dataStr);
+                            
+                            if (eventType === "message" && data.text) {
+                                textBuffer += data.text;
+                            } else if (eventType === "complete") {
+                                finalPayload = data;
+                                isBackendDone = true;
+                            }
+                        }
+                        boundary = buffer.indexOf('\n\n');
+                    }
+                }
+                if (!isBackendDone) {
+                    isBackendDone = true;
+                    finalPayload = finalPayload || { final_answer: textBuffer || "⚠️ Connection lost before the agent finished.", history: [] };
+                }
+            } catch (error) {
+                console.error("Chat Error:", error);
+                clearInterval(typingInterval);
+                bubble.innerHTML = `<div class="text-red-500 font-bold">❌ Error connecting to the server.</div>`;
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnContent;
+                submitBtn.classList.remove('opacity-80', 'cursor-not-allowed');
+            }
+        });
+
+        fetchSchema();
+        renderRandomPrompts();
+        renderInitialGreeting();
+    </script>
+</body>
+</html>
