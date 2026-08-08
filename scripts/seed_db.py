@@ -65,7 +65,9 @@ def generate_clients(cursor):
 
     def get_signup_date():
         days_ago = random.randint(180, 240)
-        return (datetime.now(UTC) - timedelta(days=days_ago)).strftime("%Y-%m-%d %H:%M:%S")
+        return (datetime.now(UTC) - timedelta(days=days_ago)).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
 
     cursor.execute(
         "INSERT INTO clients (name, email, country, signup_date) VALUES (?, ?, ?, ?)",

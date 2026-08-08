@@ -75,8 +75,7 @@ async def chat_with_agent(request: ChatRequest):
         final_state = None
 
         async for event_type, event_data in agent_app.astream(
-            initial_state,
-            stream_mode = ["custom","values"]
+            initial_state, stream_mode=["custom", "values"]
         ):
             if event_type == "custom":
                 if isinstance(event_data, str):
@@ -93,6 +92,7 @@ async def chat_with_agent(request: ChatRequest):
             }
 
             yield f"event: complete\ndata: {json.dumps(final_payload)}\n\n"
+
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 

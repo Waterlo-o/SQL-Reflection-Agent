@@ -5,6 +5,7 @@ import os
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+from langgraph.config import get_stream_writer
 
 from sql_reflection_agent.consts import MAX_ATTEMPTS
 from sql_reflection_agent.db import execute_sql
@@ -15,18 +16,18 @@ from sql_reflection_agent.prompts import (
 )
 from sql_reflection_agent.state import CriticVerdict, SQLAgentState
 
-from langgraph.config import get_stream_writer
-
 load_dotenv()
 
 API_KEY = os.getenv("GEMINI_API_KEY")
 _client = None
+
 
 def get_client():
     global _client
     if _client is None:
         _client = genai.Client(api_key=API_KEY)
     return _client
+
 
 logger = logging.getLogger(__name__)
 
@@ -137,7 +138,7 @@ def formulate_error_node(state: SQLAgentState) -> dict:
 async def formulate_answer_node(state: SQLAgentState) -> dict:
 
     writer = get_stream_writer()
-    full_text=''
+    full_text = ""
 
     full_history = (
         f"user_question: {state['question']}\n\n"
@@ -150,14 +151,14 @@ async def formulate_answer_node(state: SQLAgentState) -> dict:
 
     async for chunk in await get_client().aio.models.generate_content_stream(
         model="gemini-3.1-flash-lite",
-                contents=full_history,
-                config=types.GenerateContentConfig(
-                    system_instruction=system_prompt,
-                    max_output_tokens=1500,
-                ),
-        ):
-            if chunk.text:
-                full_text += chunk.text
-                writer(chunk.text)
+        contents=full_history,
+        config=types.GenerateContentConfig(
+            system_instruction=system_prompt,
+            max_output_tokens=1500,
+        ),
+    ):
+        if chunk.text:
+            full_text += chunk.text
+            writer(chunk.text)
 
     return {"final_answer": full_text}

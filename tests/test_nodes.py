@@ -20,7 +20,9 @@ async def test_generate_sql_node_cleans_query_and_increments(mock_get_client):
     fake_response = MagicMock()
     fake_response.text = "```sql\nSELECT * FROM clients;\n```"
     fake_response.usage_metadata = None
-    mock_get_client.return_value.aio.models.generate_content = AsyncMock(return_value=fake_response)
+    mock_get_client.return_value.aio.models.generate_content = AsyncMock(
+        return_value=fake_response
+    )
 
     initial_state: SQLAgentState = {
         "question": "How much users?",
@@ -55,7 +57,9 @@ async def test_critic_node(mock_get_client):
         }
     )
 
-    mock_get_client.return_value.aio.models.generate_content = AsyncMock(return_value=fake_response)
+    mock_get_client.return_value.aio.models.generate_content = AsyncMock(
+        return_value=fake_response
+    )
 
     initial_state: SQLAgentState = {
         "question": "How much users?",
@@ -127,7 +131,10 @@ async def test_formulate_answer_node(mock_get_stream_writer, mock_get_client):
             chunk = MagicMock()
             chunk.text = text_piece
             yield chunk
-    mock_get_client.return_value.aio.models.generate_content_stream = AsyncMock(return_value=fake_stream())
+
+    mock_get_client.return_value.aio.models.generate_content_stream = AsyncMock(
+        return_value=fake_stream()
+    )
     initial_state: SQLAgentState = {
         "question": "How nuch clients is there in total?",
         "sql_query": "SELECT COUNT(*) FROM clients;",
