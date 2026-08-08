@@ -13,5 +13,4 @@ data/*.db
 .env
 run_logs/
 
-Dockerfile
 .DS_Store
